@@ -1,0 +1,72 @@
+import numpy as np
+import pandas as pd
+
+import random
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from metacountregressor.solution import ObjectiveFunction
+from metacountregressor.metaheuristics import (harmony_search,
+                                            differential_evolution,
+                                            simulated_annealing)
+
+
+from metacountregressor.helperprocess import delete_folder_and_contents
+
+from metacountregressor import helperprocess
+
+
+# Load the data
+
+
+df = pd.read_csv('Parking analysis/mixed_data_for_nlogit_v2.csv')
+y = df['AmountDiff']
+X = df.drop(['AmountDiff'], axis =1)
+
+keep_these = ['StayDrtn', 'Weekend', 'StrtTmHr', 'AmountA', 'TrnvrAdj', 'LctnAlcS', 'LctnElzS', 'LctnTrbS','NtPd', 'TmTClrwy']
+X = X[keep_these]
+#X[keep_these] = scaler.fit_transform(X[keep_these])
+
+print("X=", X.shape, "\ny=", y.shape)
+
+#NO TEST SET
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=None, random_state=101)
+
+
+# Define example arguments (defaults for clarity); see documentation for details
+
+#### TEST 
+
+DE_PARAM_GRID = {
+            '_AI': [1],  # Adjustment Index
+            '_crossover_perc': [0.5],  # Crossover Percentage
+            '_max_iter': [10000000],  # Maximum Iterations
+            '_pop_size': [25]  # Population Size
+        }
+de_combinations = helperprocess.generate_param_combinations(DE_PARAM_GRID)
+
+
+args_de = de_combinations[0]
+
+
+
+# Define example arguments (defaults for clarity); see documentation for details
+arguments = {
+    'algorithm': 'de',           # Harmony Search algorithm
+    'test_percentage': 0,     # 15% of data for testing
+    'complexity_level': 3,        # Complexity of the test 3 indicates random parameters
+    'instance_number': 1,        # Instance number
+    'val_percentage': 0,      # 15% of data for validation
+    '_obj_1': 'bic',              # First objective: Bayesian Information Criterion
+    '_obj_2': 'MAE',       # Second objective: Root Mean Square Error on Test data
+    '_max_time': 3600*12,               # Maximum time for the process (seconds)
+    'linear_model': True,        # Use linear model, False for Poisson regression
+    '_transformations': ['nil'], # No transformations
+    'is_multi': False,         # Single output
+}
+# Fit the model using MetaCountRegressor
+obj_fun = ObjectiveFunction(X, y, **arguments)
+
+# Use Harmony Search metaheuristic to optimize the objective function
+results = differential_evolution(obj_fun, None, **args_de)
+#full print and plot of the results
+helperprocess.results_printer(results, arguments['algorithm'], int(arguments['is_multi']))
